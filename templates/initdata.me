@@ -1,0 +1,59 @@
+flask db migrate -m "Add initial jokes data"
+Открой созданный файл в папке migrations/versions/xxxx_Add_initial_data.py.
+"""Add initial data
+
+Revision ID: ...
+Revises: ...
+Create Date: ...
+"""
+from alembic import op
+import sqlalchemy as sa
+
+# ... (тут заголовки) ...
+
+def upgrade():
+    # --- ВСТАВЛЯЕМ ДАННЫЕ ЗДЕСЬ ---
+    
+    # 1. Создаем пользователей (включая авторов шуток)
+    # Используем raw SQL, так как это надежнее всего для миграций данных
+    op.execute("INSERT INTO public.user (nickname) VALUES ('pekask')")
+    op.execute("INSERT INTO public.user (nickname) VALUES ('John')")
+    op.execute("INSERT INTO public.user (nickname) VALUES ('Susan')")
+    op.execute("INSERT INTO public.user (nickname) VALUES ('Jenny')")
+
+    # 2. Создаем посты (шутки)
+    # Мы используем подзапросы (SELECT id ...), чтобы не гадать, какой ID выдаст база (1, 2, 3...)
+    
+    # Шутка Джона
+    op.execute("""
+        INSERT INTO post (body, user_id) 
+        VALUES (
+            'Чем отличается басист от пиццы?\nПицца может накормить семью из четырех человек.', 
+            (SELECT id FROM public.user WHERE nickname = 'John')
+        )
+    """)
+
+    # Шутка Сьюзан
+    op.execute("""
+        INSERT INTO post (body, user_id) 
+        VALUES (
+            'Как заставить басиста играть тише?\nПоложите перед ним ноты.', 
+            (SELECT id FROM public.user WHERE nickname = 'Susan')
+        )
+    """)
+
+    # Шутка Дженни
+    op.execute("""
+        INSERT INTO post (body, user_id) 
+        VALUES (
+            'Басист подходит к дирижеру: — Простите, я фальшивил? — Нет, ты промахивался на долю такта!', 
+            (SELECT id FROM public.user WHERE nickname = 'Jenny')
+        )
+    """)
+    # --- КОНЕЦ ВСТАВКИ ---
+
+def downgrade():
+    # Если откатываем миграцию - удаляем эти данные
+    op.execute("DELETE FROM post WHERE body LIKE '%басист%'")
+    op.execute("DELETE FROM public.user WHERE nickname IN ('pekask', 'John', 'Susan', 'Jenny')")
+    

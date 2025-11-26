@@ -5,6 +5,14 @@
 Он создаст cloudbuild.yaml.
 Он поднимет всю инфраструктуру.
 
+
+flask db migrate -m "Add initial jokes data"
+ { см initdata.me}
+
+DevOps: Когда Cloud Build запустит пайплайн, он выполнит flask db upgrade.
+Этот скрипт выполнится на Cloud SQL, создаст юзеров и посты.
+Когда запустится приложение, оно сделает SELECT и увидит данные.
+
 Пишешь миграцию локально (flask db migrate).
 В файл миграции (versions/xxx.py) вписываешь SQL insert-ы данных.
 
