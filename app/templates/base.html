@@ -1,0 +1,19 @@
+<!doctype html>
+<html>
+
+<head>
+    {% if title %}
+    <title>{{ title }} - Microjoke</title>
+    {% else %}
+    <title>Microjoke</title>
+    {% endif %}
+</head>
+
+<body>
+    <div> Microjoke: <a href="" /index">Home</a></div>
+    <hr>
+    {% block content%}{% endblock %}
+</body>
+
+
+</html>

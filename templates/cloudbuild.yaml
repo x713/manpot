@@ -1,0 +1,46 @@
+# Cloud Build is using ${VAR} for its variables.
+steps:
+  # 1. Build
+  - name: 'gcr.io/cloud-builders/docker'
+    args: ['build', '-t', '${REGION}-docker.pkg.dev/${PROJECT_ID}/${REPO_NAME}/${IMAGE_NAME}:$COMMIT_SHA', '-t', '${REGION}-docker.pkg.dev/${PROJECT_ID}/${REPO_NAME}/${IMAGE_NAME}:latest', '.']
+
+  # 2. Push
+  - name: 'gcr.io/cloud-builders/docker'
+    args: ['push', '${REGION}-docker.pkg.dev/${PROJECT_ID}/${REPO_NAME}/${IMAGE_NAME}:$COMMIT_SHA']
+
+  # 3. Update K8s Manifests (sed injects commit hash)
+  - name: 'ubuntu'
+    entrypoint: 'bash'
+    args:
+      - '-c'
+      - |
+        sed -i "s|:latest|:$COMMIT_SHA|g" k8s/deployment.yaml
+
+  # 4. Migrate (Task 8)
+  - name: 'gcr.io/google-appengine/exec-wrapper'
+    args:
+      - '-i'
+      - '${REGION}-docker.pkg.dev/${PROJECT_ID}/${REPO_NAME}/${IMAGE_NAME}:$COMMIT_SHA'
+      - '-s'
+      - '${PROJECT_ID}:${REGION}:${SQL_INSTANCE_NAME}'
+      - '-e'
+      - 'DATABASE_URL=postgresql://${DB_USER}:$$DB_PASS@127.0.0.1:5432/${DB_NAME}'
+      - '--'
+      - 'flask'
+      - 'db'
+      - 'upgrade'
+    secretEnv: ['DB_PASS']
+
+  # 5. Deploy
+  - name: 'gcr.io/cloud-builders/gcloud'
+    args: ['container', 'clusters', 'get-credentials', '${CLUSTER_NAME}', '--zone', '${ZONE}', '--project', '${PROJECT_ID}']
+  - name: 'gcr.io/cloud-builders/kubectl'
+    args: ['apply', '-f', 'k8s/']
+    env:
+      - 'CLOUDSDK_COMPUTE_ZONE=${ZONE}'
+      - 'CLOUDSDK_CONTAINER_CLUSTER=${CLUSTER_NAME}'
+
+availableSecrets:
+  secretManager:
+  - versionName: projects/${PROJECT_ID}/secrets/sql-password/versions/latest
+    env: 'DB_PASS'

@@ -1,0 +1,7 @@
+flask
+dotenv
+
+flask-sqlalchemy
+flask-migrate
+psycopg2-binary  # Драйвер для PostgreSQL (Cloud SQL)
+gunicorn         # WSGI сервер для продакшена
