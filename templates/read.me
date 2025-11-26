@@ -1,5 +1,11 @@
 Создай .gcpenv и заполни своими данными.
 
+Узнай свой ID проекта (если забыл):
+
+gcloud projects list
+
+gcloud config set project ТВОЙ_PROJECT_ID
+
 Запусти ./init_infra.sh.
 Он создаст папку k8s/ с готовыми YAML (уже с твоим ID проекта).
 Он создаст cloudbuild.yaml.
