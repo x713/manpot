@@ -44,3 +44,6 @@ availableSecrets:
   secretManager:
   - versionName: projects/${PROJECT_ID}/secrets/sql-password/versions/latest
     env: 'DB_PASS'
+
+options:
+  logging: CLOUD_LOGGING_ONLY

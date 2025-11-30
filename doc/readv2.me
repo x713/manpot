@@ -10,6 +10,8 @@ git init
 git branch -M main
 
 # 2. Edit sample_vars with your values
+# touch .flaskenv
+# FLASK_APP=microblog.py
 # copy sample_vars.sh to .gcpenv
 #if file .gcpenv not found
 if [ ! -f ../.gcpenv ]; then
@@ -50,6 +52,7 @@ git remote add origin https://github.com/${ghuser}/demo-project.git
 
 
 # 4: Launch (The Push)
+#  gh auth login
 git add .
 git commit -m "Initial commit: Infra, App and Data Migration"
 git push -u origin main

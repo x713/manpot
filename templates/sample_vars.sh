@@ -11,3 +11,5 @@ export DB_USER="change_app_username"
 
 export DB_PASS="change_password"
 export STATIC_IP_NAME="flask-static-ip"
+export IMAGE_NAME="flask-app"
+

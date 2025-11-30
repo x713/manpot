@@ -5,6 +5,8 @@ set -e # Stop if error
 #source sample_vars.sh
 source .gcpenv
 
+export COMMIT_SHA='$COMMIT_SHA'
+
 echo "--- Generating Configuration Files from Templates ---"
 mkdir -p k8s
 # create workfiles from templates  
