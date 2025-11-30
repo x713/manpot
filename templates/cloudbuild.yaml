@@ -1,4 +1,3 @@
-# Cloud Build is using ${VAR} for its variables.
 steps:
   # 1. Build
   - name: 'gcr.io/cloud-builders/docker'
@@ -8,7 +7,7 @@ steps:
   - name: 'gcr.io/cloud-builders/docker'
     args: ['push', '${REGION}-docker.pkg.dev/${PROJECT_ID}/${REPO_NAME}/${IMAGE_NAME}:$COMMIT_SHA']
 
-  # 3. Update K8s Manifests (sed injects commit hash)
+  # 3. Update K8s Manifests
   - name: 'ubuntu'
     entrypoint: 'bash'
     args:
@@ -16,7 +15,7 @@ steps:
       - |
         sed -i "s|:latest|:$COMMIT_SHA|g" k8s/deployment.yaml
 
-  # 4. Migrate (Task 8)
+  # 4. Migrate
   - name: 'gcr.io/google-appengine/exec-wrapper'
     args:
       - '-i'
@@ -24,6 +23,7 @@ steps:
       - '-s'
       - '${PROJECT_ID}:${REGION}:${SQL_INSTANCE_NAME}'
       - '-e'
+      # IMPORTANT: Use of two dollars hardcoded here for reasons $$DB_PASS
       - 'DATABASE_URL=postgresql://${DB_USER}:$$DB_PASS@127.0.0.1:5432/${DB_NAME}'
       - '--'
       - 'flask'
