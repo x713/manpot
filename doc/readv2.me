@@ -12,8 +12,8 @@ git branch -M main
 # 2. Edit sample_vars with your values
 # copy sample_vars.sh to .gcpenv
 #if file .gcpenv not found
-if [ ! -f .gcpenv ]; then
-    cp sample_vars.sh .gcpenv
+if [ ! -f ../.gcpenv ]; then
+    cp templates/sample_vars.sh .gcpenv
 fi
 
 # 3. Manual steps
