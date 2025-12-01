@@ -1,11 +1,11 @@
 steps:
-  # 1. Build
+  # 1. Build Docker image
   - name: 'gcr.io/cloud-builders/docker'
-    args: ['build', '-t', '${REGION}-docker.pkg.dev/${PROJECT_ID}/${REPO_NAME}/${IMAGE_NAME}:$COMMIT_SHA', '-t', '${REGION}-docker.pkg.dev/${PROJECT_ID}/${REPO_NAME}/${IMAGE_NAME}:latest', '.']
+    args: ['build', '-t', '${REGION}-docker.pkg.dev/${PROJECT_ID}/${REPO_NAME}/${IMAGE_NAME}:__COMMIT_SHA_PLACEHOLDER__', '-t', '${REGION}-docker.pkg.dev/${PROJECT_ID}/${REPO_NAME}/${IMAGE_NAME}:latest', '.']
 
-  # 2. Push
+  # 2. Push to Artifact Registry
   - name: 'gcr.io/cloud-builders/docker'
-    args: ['push', '${REGION}-docker.pkg.dev/${PROJECT_ID}/${REPO_NAME}/${IMAGE_NAME}:$COMMIT_SHA']
+    args: ['push', '${REGION}-docker.pkg.dev/${PROJECT_ID}/${REPO_NAME}/${IMAGE_NAME}:__COMMIT_SHA_PLACEHOLDER__']
 
   # 3. Update K8s Manifests
   - name: 'ubuntu'
@@ -13,25 +13,25 @@ steps:
     args:
       - '-c'
       - |
-        sed -i "s|:latest|:$COMMIT_SHA|g" k8s/deployment.yaml
+        # Replace the 'latest' tag with the actual ${COMMIT_SHA} in deployment.yaml
+        sed -i "s|:latest|:__COMMIT_SHA_PLACEHOLDER__|g" k8s/deployment.yaml
 
-# 4. Migrate (Final: Bash interpolation into URL)
+# 4. Database Migration (via Cloud SQL Proxy)
   - name: 'gcr.io/google-appengine/exec-wrapper'
     args:
       - '-i'
-      - '${REGION}-docker.pkg.dev/${PROJECT_ID}/${REPO_NAME}/${IMAGE_NAME}:$COMMIT_SHA'
+      - '${REGION}-docker.pkg.dev/${PROJECT_ID}/${REPO_NAME}/${IMAGE_NAME}:__COMMIT_SHA_PLACEHOLDER__'
       - '-s'
       - '${PROJECT_ID}:${REGION}:${SQL_INSTANCE_NAME}'
       - '--'
       - 'bash'
       - '-c'
-      # ВАЖНО: 
-      # 1. We use  $$DB_PASS (Cloud Build turns it inot $DB_PASS).
-      # 2. We use double qoutes "", so Bash will real password instead of $DB_PASS .
-      - 'DATABASE_URL="postgresql://${DB_USER}:$$DB_PASS@/${DB_NAME}?host=/cloudsql/${PROJECT_ID}:${REGION}:${SQL_INSTANCE_NAME}" flask db upgrade'
+      # CRITICAL FIX: We rely solely on the environment variable DB_PASS 
+      # being set by secretEnv and constructing the URL from it.
+      - 'export DATABASE_URL="postgresql://${DB_USER}:${DB_PASS}@/${DB_NAME}?host=/cloudsql/${PROJECT_ID}:${REGION}:${SQL_INSTANCE_NAME}" && flask db upgrade'
     secretEnv: ['DB_PASS']
     
-  # 5. Deploy
+  # 5. Deploy to GKE
   - name: 'gcr.io/cloud-builders/gcloud'
     args: ['container', 'clusters', 'get-credentials', '${CLUSTER_NAME}', '--zone', '${ZONE}', '--project', '${PROJECT_ID}']
   - name: 'gcr.io/cloud-builders/kubectl'

@@ -14,32 +14,33 @@ gcloud config set project "$PROJECT_ID"
 echo "--- Generating Configuration Files ---"
 mkdir -p k8s
 
-# --- VARIABLE SUBSTITUTION LOGIC ---
 
-# 1. Prevent envsubst from replacing $COMMIT_SHA
-export COMMIT_SHA='$COMMIT_SHA'
+# --- SECURE SUBSTITUTION LOGIC ---
 
-# 2. CRITICAL FIX: Cloud Build requires '$$' to interpret it as a literal '$' for Bash.
-# We save the real password
-REAL_DB_PASS=$DB_PASS
-
-# We set DB_PASS to '$$DB_PASS' so envsubst writes '$$DB_PASS' into cloudbuild.yaml
-export DB_PASS='$$DB_PASS'
+# 1. ISOLATE COMMIT_SHA:
+# Cloud Build needs ${COMMIT_SHA} in the final YAML, but envsubst substitutes it if set locally.
+# We temporarily unset it to prevent local substitution by envsubst.
+unset COMMIT_SHA
 
 # Generate Cloud Build config
 envsubst < templates/cloudbuild.yaml > cloudbuild.yaml
 
-# 3. Restore REAL password for K8s manifests and infrastructure
-export DB_PASS=$REAL_DB_PASS
+# 2. Restore environment and fix COMMIT_SHA variable for Cloud Build
+# Cloud Build substitution requires ${COMMIT_SHA}. Since envsubst stripped it, 
+# we use sed to inject the literal string ${COMMIT_SHA} back into the file.
+sed -i "s|__COMMIT_SHA_PLACEHOLDER__|\\\${COMMIT_SHA}|g" cloudbuild.yaml
 
-# Generate K8s files (They need the REAL password)
+# Restore REAL password for K8s manifests
+# (DB_PASS остается в среде и используется для K8s и SQL)
+
+# Generate K8s files (They must contain the real password for kubectl to apply secrets)
 envsubst < templates/deployment.yaml > k8s/deployment.yaml
 envsubst < templates/service.yaml > k8s/service.yaml
 envsubst < templates/ingress.yaml > k8s/ingress.yaml
 
 echo "--- Configs Generated ---"
 
-echo "--- Infrastructure Setup (Idempotent) ---"
+# --- Infrastructure Setup (Idempotent) ---
 # Enable APIs
 gcloud services enable artifactregistry.googleapis.com container.googleapis.com cloudbuild.googleapis.com sqladmin.googleapis.com secretmanager.googleapis.com
 
@@ -66,7 +67,7 @@ if ! gcloud container clusters describe "$CLUSTER_NAME" --zone "$ZONE" > /dev/nu
     gcloud container clusters create "$CLUSTER_NAME" --zone "$ZONE" --num-nodes 1 --scopes=cloud-platform
 fi
 
-# K8s Secrets
+# K8s Secrets (Uses the real DB_PASS)
 gcloud container clusters get-credentials "$CLUSTER_NAME" --zone "$ZONE"
 kubectl create secret generic db-credentials \
     --from-literal=database_url="postgresql://${DB_USER}:${DB_PASS}@127.0.0.1:5432/${DB_NAME}" \
@@ -74,7 +75,7 @@ kubectl create secret generic db-credentials \
 
 # IAM Permissions
 P_NUM=$(gcloud projects describe "$PROJECT_ID" --format='value(projectNumber)')
-# Add both default Cloud Build SA and Compute SA just in case
+# Add both default Cloud Build SA and Compute SA for security
 SAs=("serviceAccount:${P_NUM}@cloudbuild.gserviceaccount.com" "serviceAccount:${P_NUM}-compute@developer.gserviceaccount.com")
 
 for SA in "${SAs[@]}"; do

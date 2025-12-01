@@ -24,3 +24,10 @@ kubectl port-forward deployment/flask-app 8080:5000
 
 В Cloud Shell нажми кнопку "Web Preview" (значок глаза справа вверху терминала) -> "Preview on port 8080".
 Если сайт откроется — значит приложение работает, база данных подключена, шутки на месте. Осталось только дождаться, пока Ingress (Load Balancer) проснется.
+
+
+kubectl get services -n default
+
+#kubectl apply -f k8s/service.yaml
+
+ kubectl get pods -l app=flask-app
