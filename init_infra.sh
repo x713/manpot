@@ -1,28 +1,32 @@
 #!/bin/bash
-set -e
+set -e # Exit immediately if a command exits with a non-zero status
 
 # --- 1. Configuration Setup ---
+
 if [ ! -f .gcpenv ]; then
     echo "Error: Configuration file '.gcpenv' not found."
     exit 1
 fi
+
 source .gcpenv
 gcloud config set project "$PROJECT_ID"
 
 echo "--- Generating Configuration Files ---"
 mkdir -p k8s
 
-# --- CRITICAL FIX: MASKING VARIABLES ---
-# 1. Mask COMMIT_SHA so envsubst ignores it
+# --- VARIABLE SUBSTITUTION LOGIC ---
+
+# 1. Prevent envsubst from replacing $COMMIT_SHA
 export COMMIT_SHA='$COMMIT_SHA'
 
-# 2. Mask DB_PASS so envsubst keeps '$$DB_PASS' literally in cloudbuild.yaml
-# We save the real password to a temp variable
+# 2. CRITICAL FIX: Cloud Build requires '$$' to interpret it as a literal '$' for Bash.
+# We save the real password
 REAL_DB_PASS=$DB_PASS
-# We want envsubst to replace ${DB_PASS} with literal $DB_PASS
+
+# We set DB_PASS to '$$DB_PASS' so envsubst writes '$$DB_PASS' into cloudbuild.yaml
 export DB_PASS='$$DB_PASS'
 
-# Generate Cloud Build (It will now have $$DB_PASS, which is safe)
+# Generate Cloud Build config
 envsubst < templates/cloudbuild.yaml > cloudbuild.yaml
 
 # 3. Restore REAL password for K8s manifests and infrastructure
