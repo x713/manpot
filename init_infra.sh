@@ -19,6 +19,7 @@ export COMMIT_SHA='$COMMIT_SHA'
 # 2. Mask DB_PASS so envsubst keeps '$$DB_PASS' literally in cloudbuild.yaml
 # We save the real password to a temp variable
 REAL_DB_PASS=$DB_PASS
+# We want envsubst to replace ${DB_PASS} with literal $DB_PASS
 export DB_PASS='$$DB_PASS'
 
 # Generate Cloud Build (It will now have $$DB_PASS, which is safe)
