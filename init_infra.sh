@@ -21,29 +21,47 @@ echo "--- 2. Determining Instance Connection Name ---"
 REAL_CONN_NAME=$(gcloud sql instances describe "$SQL_INSTANCE_NAME" --format="value(connectionName)" 2>/dev/null || true)
 
 if [ -z "$REAL_CONN_NAME" ]; then
-    echo "   > Instance not found (expected for fresh run)."
-    echo "   > Using predicted connection name."
+    echo "    > Instance not found (expected for fresh run)."
+    echo "    > Using predicted connection name."
     REAL_CONN_NAME="$PROJECT_ID:$REGION:$SQL_INSTANCE_NAME"
 else
-    echo "   > Found existing instance: $REAL_CONN_NAME"
+    echo "    > Found existing instance: $REAL_CONN_NAME"
 fi
-echo "   > Using: $REAL_CONN_NAME"
+echo "    > Using: $REAL_CONN_NAME"
 
 # --- 3. Generate Cloud Build Config ---
 echo "--- Generating Cloud Build Config ---"
-# We DO NOT use envsubst for DB_USER/DB_NAME (they are secrets)
+# Temporarily unset sensitive variables to prevent substitution leak
+DB_PASS_SAVE=$DB_PASS
+DB_USER_SAVE=$DB_USER
+DB_NAME_SAVE=$DB_NAME
+
+unset DB_PASS
+unset DB_USER
+unset DB_NAME
+
+# Substitute environment variables into cloudbuild.yaml
 envsubst < templates/cloudbuild.yaml > cloudbuild.yaml
 
+# Restore sensitive variables
+DB_PASS=$DB_PASS_SAVE
+DB_USER=$DB_USER_SAVE
+DB_NAME=$DB_NAME_SAVE
+
 # Substitutions
-sed -i 's|__COMMIT_SHA__|$COMMIT_SHA|g' cloudbuild.yaml
+# Replace the instance connection name placeholder
 sed -i "s|__INSTANCE_CONNECTION_NAME__|$REAL_CONN_NAME|g" cloudbuild.yaml
+
+# CRITICAL FIX: Replace the commit SHA placeholder (__COMMIT_SHA__) with the literal Cloud Build variable string.
+# This ensures Cloud Build sees $_COMMIT_SHA at runtime, resolving the "invalid build step name" error.
+sed -i 's|__COMMIT_SHA__|$_COMMIT_SHA|g' cloudbuild.yaml 
 
 # Safety Check
 if grep -q "$DB_PASS" cloudbuild.yaml; then
     echo "CRITICAL ERROR: Password found in config!"
     exit 1
 fi
-echo "   > Verification Passed."
+echo "    > Verification Passed."
 
 # --- 4. Generate K8s Manifests ---
 mkdir -p k8s
@@ -93,8 +111,7 @@ fi
 
 echo "--- Cloud SQL Setup (Dual IP) ---"
 if ! gcloud sql instances describe "$SQL_INSTANCE_NAME" > /dev/null 2>&1; then
-    echo "   > Creating Cloud SQL instance (this takes ~10-15 mins)..."
-    # FIXED: Removed --enable-private-service-connect=false (it's implicit)
+    echo "    > Creating Cloud SQL instance (this takes ~10-15 mins)..."
     gcloud sql instances create "$SQL_INSTANCE_NAME" \
         --database-version=POSTGRES_13 \
         --cpu=1 --memory=4GB \
@@ -107,13 +124,27 @@ if ! gcloud sql instances describe "$SQL_INSTANCE_NAME" > /dev/null 2>&1; then
     gcloud sql databases create "$DB_NAME" --instance="$SQL_INSTANCE_NAME"
     gcloud sql users create "$DB_USER" --instance="$SQL_INSTANCE_NAME" --password="$DB_PASS"
 else
-    echo "   > Instance exists. Verifying Public IP..."
+    echo "    > Instance exists. Verifying Public IP..."
     gcloud sql instances patch "$SQL_INSTANCE_NAME" --assign-ip --network=default
+fi
+
+echo "    > Ensuring database [$DB_NAME] and user [$DB_USER] exist..."
+
+# Check and create Database
+if ! gcloud sql databases describe "$DB_NAME" --instance="$SQL_INSTANCE_NAME" > /dev/null 2>&1; then
+    echo "      > Creating database [$DB_NAME]..."
+    gcloud sql databases create "$DB_NAME" --instance="$SQL_INSTANCE_NAME"
+fi
+
+# Check and create User
+if ! gcloud sql users describe "$DB_USER" --instance="$SQL_INSTANCE_NAME" > /dev/null 2>&1; then
+    echo "      > Creating user [$DB_USER]..."
+    gcloud sql users create "$DB_USER" --instance="$SQL_INSTANCE_NAME" --password="$DB_PASS"
 fi
 
 echo "--- GKE Cluster ---"
 if ! gcloud container clusters describe "$CLUSTER_NAME" --zone "$ZONE" > /dev/null 2>&1; then
-    echo "   > Creating GKE Cluster (this takes ~5-10 mins)..."
+    echo "    > Creating GKE Cluster (this takes ~5-10 mins)..."
     gcloud container clusters create "$CLUSTER_NAME" --zone "$ZONE" --num-nodes 1 --scopes=cloud-platform
 fi
 

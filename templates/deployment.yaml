@@ -1,7 +1,6 @@
 apiVersion: apps/v1
 kind: Deployment
 metadata:
-  # Using the name you provided
   name: flask-app
 spec:
   replicas: 1
@@ -13,15 +12,34 @@ spec:
       labels:
         app: flask-app
     spec:
-      # CRITICAL: This ServiceAccount is required for the Cloud SQL Proxy to authenticate
-      # using Workload Identity/IAM roles.
+      # Required for Workload Identity/Cloud SQL Proxy authentication
       serviceAccountName: gke-sa
+      
+      # Init Container: Runs database migrations before the main app container starts.
+      initContainers:
+      - name: db-migration
+        # The image must be the same as the main application, but runs a different command.
+        image: $REGION-docker.pkg.dev/$PROJECT_ID/$REPO_NAME/$IMAGE_NAME:__IMAGE_TAG_PLACEHOLDER__
+        env:
+        - name: DATABASE_URL 
+          valueFrom:
+            secretKeyRef:
+              name: db-credentials
+              key: database_url
+        - name: SECRET_KEY
+          # Using a temporary key for the migration step, as the full app secret isn't needed.
+          value: "temp-migration-key"
+        command: ["flask"]
+        args: ["db", "upgrade"] # Command to execute the Flask-Migrate upgrade
+        resources:
+          limits:
+            memory: "256Mi"
+            cpu: "200m"
+      
       containers:
-      # Application
+      # Main Application Container
       - name: web
-        # CRITICAL FIX: Replaced ':latest' with the placeholder
-        # '__IMAGE_TAG_PLACEHOLDER__'. This allows Cloud Build (in Step 4)
-        # to inject the unique commit SHA for reliable deployments.
+        # Image tag is set by envsubst in init_infra.sh, using the Cloud Build variable ($COMMIT_SHA).
         image: $REGION-docker.pkg.dev/$PROJECT_ID/$REPO_NAME/$IMAGE_NAME:__IMAGE_TAG_PLACEHOLDER__
         ports:
         - containerPort: 5000
@@ -31,13 +49,13 @@ spec:
             secretKeyRef:
               name: db-credentials
               key: database_url
-        - name: SECRET_KEY # Ensure the application's secret key is set
-          value: "$SECRET_KEY"
+        - name: SECRET_KEY
+          value: "$SECRET_KEY" # Injected via envsubst from the environment variable
         
-        # Added K8s health checks for stability and zero-downtime rolling updates
+        # Health Checks for reliable service management
         livenessProbe:
           httpGet:
-            path: /healthz
+            path: /
             port: 5000
           initialDelaySeconds: 5
           periodSeconds: 10
@@ -47,18 +65,26 @@ spec:
             port: 5000
           initialDelaySeconds: 10
           periodSeconds: 15
+        resources:
+          limits:
+            memory: "512Mi"
+            cpu: "500m"
           
-      # Sidecar Proxy
+      # Sidecar Container: Cloud SQL Proxy
       - name: cloud-sql-proxy
-        # Using the correct and current image path you provided
+        # The standard, public image for the Cloud SQL Proxy
         image: gcr.io/cloud-sql-connectors/cloud-sql-proxy:2.1.0
         args:
-          - "--private-ip"
-          - "$PROJECT_ID:$REGION:$SQL_INSTANCE_NAME" # Using $ for envsubst compatibility
+          - "--private-ip" # Use private IP for GKE-to-SQL communication
+          # Instance connection name is substituted by envsubst in init_infra.sh
+          - "$PROJECT_ID:$REGION:$SQL_INSTANCE_NAME"
         securityContext:
           runAsNonRoot: true
-          # Added stricter security settings for the proxy container
           allowPrivilegeEscalation: false
           capabilities:
             drop:
               - ALL
+        resources:
+          limits:
+            memory: "128Mi"
+            cpu: "100m"

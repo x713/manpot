@@ -7,11 +7,11 @@ export ZONE="set-zone_name"
 
 export REPO_NAME="change-my-reponame"
 export CLUSTER_NAME="change-my-clustername"
-export SQL_INSTANCE_NAME="change-my-sql-instancename"
-export DB_NAME="change_app_db_name"
-export DB_USER="change_app_username"
+export SQL_INSTANCE_NAME="devops-flask-db-unique"
+export DB_NAME="your_app_db"
+export DB_USER="your_unique_username"
 
-export DB_PASS="change_password"
+export DB_PASS="YourVeryStrongUniquePassword123!"
 export STATIC_IP_NAME="flask-static-ip"
 export IMAGE_NAME="flask-app"
 
