@@ -46,8 +46,8 @@ spec:
           periodSeconds: 15
         resources:
           limits:
-            memory: "512Mi"
-            cpu: "500m"
+            memory: "256Mi"
+            cpu: "150m"
           
       # Sidecar Container: Cloud SQL Proxy
       - name: cloud-sql-proxy

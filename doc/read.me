@@ -17,7 +17,7 @@ Find your project ID (if forgot):
     --location="$REGION" --description="Docker repository"
 
 # Build and push image
-> gcloud builds submit --tag "$REGION"-docker.pkg.dev/${PROJECT_ID}/$REPO_NAME/$IMAGE_NAME:latest . 
+> gcloud builds submit --tag "$REGION"-docker.pkg.dev/${PROJECT_ID}/$REPO_NAME/$IMAGE_NAME:tag1 . 
 
 --- step 2 : Cloud SQL ---
 # Create SQL DB
@@ -43,7 +43,7 @@ Find your project ID (if forgot):
 # kubectl delete deployment $APP_NAME
 # Deploy app
 > kubectl create deployment $APP_NAME \
-  --image="$REGION"-docker.pkg.dev/${PROJECT_ID}/$REPO_NAME/$IMAGE_NAME:latest \
+  --image="$REGION"-docker.pkg.dev/${PROJECT_ID}/$REPO_NAME/$IMAGE_NAME:tag1 \
   --replicas=2
 
 > kubectl get deployments
@@ -81,7 +81,9 @@ Find your project ID (if forgot):
 > edit migrations/versions/xxx.py
 > ./migrate.sh
 # if manually updated
+# sed -i 's/__IMAGE_TAG_PLACEHOLDER__/tag1/g' k8s/deployment.yaml
 > kubectl apply -f k8s/deployment.yaml
+# kubectl apply -f k8s/
 
 --- step 8 : Automate SQL migration scripts ---
 # Create a pipeline in Cloud Build to apply database migration scripts.
