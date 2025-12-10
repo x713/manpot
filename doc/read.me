@@ -1,37 +1,119 @@
-Создай .gcpenv и заполни своими данными.
+-- step 0 --
+git clone https://github.com/x713/manapot.git
 
-Узнай свой ID проекта (если забыл):
+create .gcpenv and fill with your data (use sample_vars as template).
 
-gcloud projects list
+Find your project ID (if forgot):
+> gcloud projects list
+> gcloud config set project YOUR_PROJECT_ID
 
-gcloud config set project ТВОЙ_PROJECT_ID
+--- step 1 : Docker ---
+# Create a new Docker repository named "$REPO_NAME" 
+# in the location with the description "Docker repository"
 
-Запусти 
+#source .gcpenv
+# Create repository
+> gcloud artifacts repositories create $REPO_NAME --repository-format=docker \
+    --location="$REGION" --description="Docker repository"
+
+# Build and push image
+> gcloud builds submit --tag "$REGION"-docker.pkg.dev/${PROJECT_ID}/$REPO_NAME/$IMAGE_NAME:tag1
+
+--- step 2 : Cloud SQL ---
+# Create SQL DB
+# by running ./init_infra.sh
+#source .gcpenv
+#SQL_INSTANCE_NAME
+#DB_NAME
+#DB_USER
+#DB_PASS
+
+--- step 3 : GKE ---
+# Create GKE cluster
+# by running ./init_infra.sh
+# 
+    - '$REGION-docker.pkg.dev/$PROJECT_ID/$REPO_NAME/$IMAGE_NAME:latest'
+#source .gcpenv
+# Create cluster
+> gcloud container clusters create $CLUSTER_NAME \
+    --num-nodes=2 \
+    --zone="$ZONE"
+
+# Deploy app
+> kubectl create deployment $APP_NAME \
+  --image="$REGION"-docker.pkg.dev/${PROJECT_ID}/$REPO_NAME/$IMAGE_NAME:latest \
+  --replicas=2
+
+> kubectl get deployments
+> kubectl get pods
+
+# UPDATES
+# have build and push :tag2
+# $REGION-docker.pkg.dev/${PROJECT_ID}/$REPO_NAME/$IMAGE_NAME:tag2
+# replace 'tag1' with 'tag2'
+> kubectl set image deployment/$APP_NAME $APP_NAME=$REGION-docker.pkg.dev/${PROJECT_ID}/$REPO_NAME/$IMAGE_NAME:tag2
+
+# Monitor rollout
+> kubectl rollout status deployment/$APP_NAME
+
+
+--- step 5 : Expose ---
+# Expose your service over Cloud Load Balancer (Ingress) with an external static IP address:
+# by gen_infra.sh
+> kubectl apply -f k8s/service.yaml
+> kubectl apply -f k8s/ingress.yaml
+
+--- step 6 : Connect to Database ---
+# Connect to Database using Cloud SQL Auth Proxy:
+# Create a Cloud SQL Database with a private IP address. (init_infra.sh)
+# Connect the Application to the Database over the private IP address
+#  using Cloud SQL Auth Proxy. (sidecar container)
+# Use Cloud Secret Manager & k8s secrets to store secret data.
+# by init_infra.sh
+
+--- step 7 : Manual SQL migration scripts ---
+# Create and apply SQL database migration scripts using one of database migration tools when the SQL database migration scripts add.
+# Connect the Migration Tool to the Database over the public IP address using Cloud SQL Auth Proxy.
+# by sqlalchemy migrate
+>./generate_local_migration.sh 
+> edit migrations/versions/xxx.py
+> ./migrate.sh
+# if manually updated
+> kubectl apply -f k8s/deployment.yaml
+
+--- step 8 : Automate SQL migration scripts ---
+# Create a pipeline in Cloud Build to apply database migration scripts.
+# by cloudbuild.yaml
+
+
+-- steps description --
+
+Execute 
 ./gen_infra.sh.
 
-Затем 
+Then 
 ./init_infra.sh.
 
-Он создаст папку k8s/ с готовыми YAML (уже с твоим ID проекта).
-Он создаст cloudbuild.yaml.
-Он поднимет всю инфраструктуру.
+It will create k8s/ folder with ready YAML (already with your project ID).
+It will create cloudbuild.yaml.
+It will create all infrastructure.
 
 
 flask db migrate -m "Add initial jokes data"
  { см initdata.me}
 
-DevOps: Когда Cloud Build запустит пайплайн, он выполнит flask db upgrade.
-Этот скрипт выполнится на Cloud SQL, создаст юзеров и посты.
-Когда запустится приложение, оно сделает SELECT и увидит данные.
+DevOps: When Cloud Build runs the pipeline, it will execute flask db upgrade.
+This script will run on Cloud SQL, create users and posts.
+When the application starts, it will make a SELECT and see the data.
 
-Пишешь миграцию локально (flask db migrate).
-В файл миграции (versions/xxx.py) вписываешь SQL insert-ы данных.
+You write migration locally (flask db migrate).
+In the migration file (versions/xxx.py) you write SQL insert-ы данных.
 
 Git Push:
-Коммитишь всё: 
-сгенерированную папку k8s/, cloudbuild.yaml, папку migrations/.
-Делаешь Push.
+Commit all: 
+generated k8s/ folder, cloudbuild.yaml, migrations/ folder.
+Push.
 
-Всё управляется из одного файла config.env.
-Если нужно поменять регион или имя базы — меняешь там, запускаешь скрипт генерации,
- коммитишь, пушишь.
+Everything is managed from one config.env file.
+If you need to change the region or database name — change it there, run the generation script,
+ commit, push.

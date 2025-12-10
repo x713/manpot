@@ -1,0 +1,42 @@
+You are expected to create container images, store the images in a repository, and configure a Cloud Build CI/CD pipeline to automate the build for the product. You know that your supervisor will ask you to complete these tasks:
+
+1. Manual Build Docker Image: (read.me - step 1)
+Create a Cloud Source Repository with your app (HTTP Server).
+Add a Dockerfile file into your repository to build your app.
+Test the created Docker image.
+Push the Docker image into the Artifact Repository.
+
+2. Automate Build Docker Image: (gen_infra.sh creates cloudbuild.yaml, need to setup Cloud Build)
+Create a pipeline in Cloud Build to build a Docker image when the source code changes.
+
+3. Manual Docker Image Deployment: (init_infra.sh creates k8s/ folder with deployment.yaml, need to setup k8s cluster)
+Use the image to create a deployment in Kubernetes.
+Update the image and apply the change of the deployment.
+
+4. Automate Docker Image Deployment: (same as 2)
+Create a pipeline in Cloud Build to deploy a new version of your image when the source code changes.
+
+(done by init_infra.sh)
+5. Expose your service over Cloud Load Balancer (Ingress) with an external static IP address:
+
+(done by init_infra.sh)
+6. Connect to Database using Cloud SQL Auth Proxy:
+Create a Cloud SQL Database with a private IP address.
+Connect the Application to the Database over the private IP address using Cloud SQL Auth Proxy.
+Use Cloud Secret Manager & k8s secrets to store secret data.
+
+(done by init_infra.sh)
+7. Manual SQL migration scripts:
+Create and apply SQL database migration scripts using one of database migration tools when the SQL database migration scripts add.
+Connect the Migration Tool to the Database over the public IP address using Cloud SQL Auth Proxy.
+
+(done by init_infra.sh)
+8. Automate SQL migration scripts:
+Create a pipeline in Cloud Build to apply database migration scripts.
+
+Final Task:
+After completing all tasks above you need to document what you did with 
+diagrams that describe request flow, CI/CD flow, etc.
+Connect with a peer member of GCP Developer Course.
+Share the diagrams, do a call where you present your implementation and get feedback. 
+After that attach your diagrams in.

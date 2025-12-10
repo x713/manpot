@@ -15,26 +15,7 @@ spec:
       # Required for Workload Identity/Cloud SQL Proxy authentication
       serviceAccountName: gke-sa
       
-      # Init Container: Runs database migrations before the main app container starts.
-      initContainers:
-      - name: db-migration
-        # The image must be the same as the main application, but runs a different command.
-        image: $REGION-docker.pkg.dev/$PROJECT_ID/$REPO_NAME/$IMAGE_NAME:__IMAGE_TAG_PLACEHOLDER__
-        env:
-        - name: DATABASE_URL 
-          valueFrom:
-            secretKeyRef:
-              name: db-credentials
-              key: database_url
-        - name: SECRET_KEY
-          # Using a temporary key for the migration step, as the full app secret isn't needed.
-          value: "temp-migration-key"
-        command: ["flask"]
-        args: ["db", "upgrade"] # Command to execute the Flask-Migrate upgrade
-        resources:
-          limits:
-            memory: "256Mi"
-            cpu: "200m"
+
       
       containers:
       # Main Application Container

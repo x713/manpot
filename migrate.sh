@@ -5,6 +5,18 @@ set -e
 PROXY_PORT=5432
 PROXY_BIN="/tmp/cloud-sql-proxy"
 
+# Check/Construct Connection Name
+if [ -z "$INSTANCE_CONNECTION_NAME" ]; then
+    if [ -n "$PROJECT_ID" ] && [ -n "$REGION" ] && [ -n "$SQL_INSTANCE_NAME" ]; then
+        export INSTANCE_CONNECTION_NAME="${PROJECT_ID}:${REGION}:${SQL_INSTANCE_NAME}"
+        echo "Auto-detected INSTANCE_CONNECTION_NAME: $INSTANCE_CONNECTION_NAME"
+    else
+        echo "Error: INSTANCE_CONNECTION_NAME is not set."
+        echo "Please export it or source .gcpenv (ensure PROJECT_ID, REGION, SQL_INSTANCE_NAME are set)."
+        exit 1
+    fi
+fi
+
 echo "--- [migrate.sh] Starting Migration Wrapper ---"
 
 # 1. Download Cloud SQL Proxy (if not present)
@@ -49,7 +61,11 @@ echo "Running Flask DB Upgrade..."
 export DATABASE_URL="postgresql://$DB_USER:$DB_PASS@127.0.0.1:$PROXY_PORT/$DB_NAME"
 
 # Run the upgrade
-if cd /app && flask db upgrade; then
+if [ -d "/app" ]; then
+    cd /app
+fi
+
+if flask db upgrade; then
     echo "Migration Successful!"
     EXIT_CODE=0
 else
