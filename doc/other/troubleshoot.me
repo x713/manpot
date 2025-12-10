@@ -1,0 +1,35 @@
+CLUSTER TROUBLESHOOTING
+
+Execute this command in Cloud Shell:
+kubectl get ingress
+
+What do you see:
+NAME: flask-ingress
+ADDRESS:
+
+If it is empty or something like Pending — means Google is still building it. Wait.
+If there are numbers (IP address) — means it is almost ready.
+If there is no IP for a long time (Debug)
+If it has not appeared after 10 minutes, let's see what it complains about:
+
+kubectl describe ingress flask-ingress
+Scroll to the bottom, in the Events section.
+If there is Creating Ingress / Syncing — everything is fine, wait.
+If there are errors about static ip not found — means we did not create IP or made a mistake in the name in config.env.
+How to get to the site RIGHT NOW (without waiting for the balancer)
+
+While Google is building the balancer, you can "drill a hole" directly into your pod from the terminal to make sure the application is alive.
+Execute:
+
+# Drill port 8080 of your Cloud Shell into port 5000 of the pod
+kubectl port-forward deployment/flask-app 8080:5000
+
+In Cloud Shell click the "Web Preview" button (the eye icon on the right in the terminal) -> "Preview on port 8080".
+If the site opens — means the application is alive, the database is connected, the jokes are there. Just wait for Ingress (Load Balancer) to wake up.
+
+
+kubectl get services -n default
+
+#kubectl apply -f k8s/service.yaml
+
+ kubectl get pods -l app=flask-app
