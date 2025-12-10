@@ -13,5 +13,6 @@ export DB_USER="your_unique_username"
 
 export DB_PASS="YourVeryStrongUniquePassword123!"
 export STATIC_IP_NAME="flask-static-ip"
-export IMAGE_NAME="flask-app"
-export APP_NAME="flask-deployed-cluster-app"
+export IMAGE_NAME="flask-image"
+export SERVICE_ACCOUNT_NAME="gke-sa"
+export APP_NAME="flask-app"

@@ -111,7 +111,7 @@ echo "--- Applying K8s Secrets and Service Accounts ---"
 gcloud container clusters get-credentials "$CLUSTER_NAME" --zone "$ZONE"
 
 # Create Service Account for Workload Identity/Proxy
-kubectl create serviceaccount gke-sa --dry-run=client -o yaml | kubectl apply -f -
+kubectl create serviceaccount $SERVICE_ACCOUNT_NAME --dry-run=client -o yaml | kubectl apply -f -
 
 # Create DB Credentials Secret
 kubectl create secret generic db-credentials \
