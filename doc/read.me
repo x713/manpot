@@ -39,6 +39,8 @@ Find your project ID (if forgot):
     --num-nodes=2 \
     --zone="$ZONE"
 
+# Cleanup
+# kubectl delete deployment $APP_NAME
 # Deploy app
 > kubectl create deployment $APP_NAME \
   --image="$REGION"-docker.pkg.dev/${PROJECT_ID}/$REPO_NAME/$IMAGE_NAME:latest \

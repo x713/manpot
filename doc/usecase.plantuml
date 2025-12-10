@@ -22,6 +22,7 @@ cloud "Google Cloud Platform" {
     }
     
     database "Cloud SQL\n(PostgreSQL)" as db
+    component "Secret Manager" as secrets
 }
 
 user -> ingress : 1. HTTP Request
@@ -29,5 +30,7 @@ ingress -> service : 2. Route traffic
 service -> flask : 3. Forward to App
 flask -> proxy : 4. SQL Query (connect to localhost)
 proxy <-> db : 5. Encrypted Tunnel (Private IP)
+
+flask ..> secrets : "Env Vars (K8s Secrets)"
 
 @enduml
