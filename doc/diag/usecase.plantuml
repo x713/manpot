@@ -1,6 +1,6 @@
 @startuml
-!theme plain
-autonumber
+left to right direction
+skinparam component style uml1
 
 actor "User" as user
 cloud "Google Cloud Platform" {
@@ -12,11 +12,11 @@ cloud "Google Cloud Platform" {
         
         node "Pod" {
             component "Flask App\n(Container)" as flask
-            component "Cloud SQL Proxy\n(Sidecar Container)" as proxy
+            component "Cloud SQL Proxy\n" as proxy
             
             note right of proxy
+              (Sidecar Container)
               Listens on localhost:5432
-              Task 6 Requirement
             end note
         }
     }

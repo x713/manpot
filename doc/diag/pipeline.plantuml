@@ -1,5 +1,4 @@
 @startuml
-!theme plain
 
 title Cloud Build CI/CD Pipeline
 
